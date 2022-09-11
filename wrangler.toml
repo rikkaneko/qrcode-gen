@@ -1,0 +1,4 @@
+name = "qrcode-gen"
+main = "src/index.ts"
+compatibility_date = "2022-09-11"
+workers_dev = false
