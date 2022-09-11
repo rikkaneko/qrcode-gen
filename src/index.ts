@@ -43,7 +43,7 @@ export default {
     }
 
     if (!searchParams.has('q')) {
-      return new Response(null, {
+      return new Response('Required input text.\n', {
         status: 400,
       });
     }
