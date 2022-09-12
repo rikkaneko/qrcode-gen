@@ -48,39 +48,59 @@ export default {
       });
     }
 
-    const text = searchParams.get('q')!;
-    let encoded: string | undefined;
-    const type = searchParams.get('type') ?? '';
-    switch (type) {
-      case '':
-      case 'utf8':
-        QRStr.generate(text, {small: true}, res => encoded = res);
-        return new Response(encoded!, {
-          status: 200,
-        });
+    let cache = caches.default;
+    let res = await cache.match(request.url);
+    if (res == undefined) {
+      const text = searchParams.get('q')!;
+      let encoded: string | undefined;
+      const type = searchParams.get('type') ?? '';
+      switch (type) {
+        case '':
+        case 'utf8':
+          QRStr.generate(text, {small: true}, res => encoded = res);
+          res = new Response(encoded!, {
+            cf: {
+              cacheEverything: true,
+            },
+            headers: {
+              'cache-control': 'public, max-age=172800',
+            },
+          });
+          break;
 
-      case 'svg':
-        QRSvg.toString(text, {
-          margin: 1,
-        }, (err, res) => {
-          if (err) {
-            return new Response(err.message, {
-              status: 400,
-            });
-          }
-          encoded = res;
-        });
+        case 'svg':
+          QRSvg.toString(text, {
+            margin: 1,
+          }, (err, res) => {
+            if (err) {
+              return new Response(err.message, {
+                status: 400,
+              });
+            }
+            encoded = res;
+          });
 
-        return new Response(encoded, {
-          headers: {
-            'content-type': 'image/svg+xml',
-          },
-        });
+          res = new Response(encoded, {
+            cf: {
+              cacheEverything: true,
 
-      default:
-        return new Response('Invalid type.\n', {
-          status: 400,
-        });
+            },
+            headers: {
+              'content-type': 'image/svg+xml',
+              'cache-control': 'public, max-age=172800',
+            },
+          });
+          break;
+
+        default:
+          return new Response('Invalid type.\n', {
+            status: 400,
+          });
+      }
+
+      ctx.waitUntil(cache.put(request.url, res.clone()));
     }
+
+    return res;
   },
 };
