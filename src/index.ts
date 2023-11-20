@@ -18,20 +18,19 @@
 
 import QRSvg from 'qrcode';
 import QRStr from 'qrcode-terminal';
+import { SERVICE_URL } from './constants';
 
 export interface Env {}
 
 export default {
-  async fetch(
-      request: Request,
-      env: Env,
-      ctx: ExecutionContext,
-  ): Promise<Response> {
-    const {url} = request;
-    const {
-      pathname,
-      searchParams,
-    } = new URL(url);
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const agent = request.headers.get('user-agent') ?? '';
+    const is_browser = ['Chrome', 'Mozilla', 'AppleWebKit', 'Safari', 'Gecko', 'Chromium'].some((v) =>
+      agent.includes(v)
+    );
+    const { pathname, searchParams } = new URL(request.url);
+    searchParams.set('type', searchParams.get('type') || (is_browser ? 'svg' : 'utf8'));
+    const req_key = `https://${SERVICE_URL}/?${searchParams.toString()}`;
 
     if (pathname === '/favicon.ico') {
       return new Response(null, {
@@ -49,19 +48,14 @@ export default {
     }
 
     let cache = caches.default;
-    let res = await cache.match(request.url);
+    let res = await cache.match(req_key);
     if (res == undefined) {
       const text = searchParams.get('q')!;
       let encoded: string | undefined;
-      const type = searchParams.get('type') ?? '';
-      switch (type) {
-        case '':
+      switch (searchParams.get('type')) {
         case 'utf8':
-          QRStr.generate(text, {small: true}, res => encoded = res);
+          QRStr.generate(text, { small: true }, (res) => (encoded = res));
           res = new Response(encoded!, {
-            cf: {
-              cacheEverything: true,
-            },
             headers: {
               'cache-control': 'public, max-age=172800',
             },
@@ -69,22 +63,22 @@ export default {
           break;
 
         case 'svg':
-          QRSvg.toString(text, {
-            margin: 1,
-          }, (err, res) => {
-            if (err) {
-              return new Response(err.message, {
-                status: 400,
-              });
+          QRSvg.toString(
+            text,
+            {
+              margin: 1,
+            },
+            (err, res) => {
+              if (err) {
+                return new Response(err.message, {
+                  status: 400,
+                });
+              }
+              encoded = res;
             }
-            encoded = res;
-          });
+          );
 
           res = new Response(encoded, {
-            cf: {
-              cacheEverything: true,
-
-            },
             headers: {
               'content-type': 'image/svg+xml',
               'cache-control': 'public, max-age=172800',
@@ -98,7 +92,7 @@ export default {
           });
       }
 
-      ctx.waitUntil(cache.put(request.url, res.clone()));
+      ctx.waitUntil(cache.put(req_key, res.clone()));
     }
 
     return res;

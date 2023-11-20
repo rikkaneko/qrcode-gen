@@ -1,7 +1,7 @@
 # qrcode-gen
 
 This is a QR Code generation service targeted to run on Cloudflare workers.  
-[qrcode.nekoul.com](https://qrcode.nekoul.com) is the current deployment of
+[qrcode.nekoid.cc](https://qrcode.nekoid.cc) is the current deployment of
 this project.
 
 ## Usage
@@ -9,10 +9,10 @@ this project.
 This application use query parameters to recieve input text and control the output format.  
 | Parameters | Description |
 |:-:|:-:|
-| **q** | Text to encode </br> *URL-encoded string* |
+| **q** | Text to encode </br> _URL-encoded string_ |
 | **type** | Output format </br> (Available options: `svg` and `utf8`) |
 
-The output format is default to `utf8`.  
+The output format is default to `svg` if detected browser user agent, otherwise `utf8`.  
 If used `svg`, a QR code of SVG format would be served with proper `Content-Type` header set.  
 If used `utf8`, a QR code formatted with UTF-8 characters would be generated.
 
